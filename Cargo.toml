@@ -1,0 +1,16 @@
+[package]
+name = "clamide"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cstr = "0.2.11"
+getopts = "0.2.21"
+log = "0.4.17"
+nix = "0.26.2"
+pretty_env_logger = "0.4.0"
+syscalls = "0.6.7"
+sysinfo = "0.28.2"
+thiserror = "1.0.39"
