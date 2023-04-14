@@ -4,11 +4,12 @@ use nix::{
     libc::{user_regs_struct, MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE},
     sys::{
         ptrace,
-        signal::Signal::SIGTRAP,
+        signal::Signal::{self, SIGTRAP},
         wait::{waitpid, WaitStatus},
     },
     unistd::Pid,
 };
+use proc_maps::{MapRange, get_process_maps};
 use syscalls::Sysno;
 
 use thiserror::Error;
@@ -71,7 +72,9 @@ impl<'a> Drop for UserProcessMemory<'a> {
 }
 
 pub struct UserProcess {
-    pid: Pid,
+    pub pid: Pid,
+    pub maps: Vec<MapRange>,
+    pub startptr: u64,
 }
 
 impl UserProcess {
@@ -81,8 +84,11 @@ impl UserProcess {
     pub fn attach(pid: Pid) -> HostResult<Self> {
         ptrace::attach(pid)?;
 
-        log::info!("New UserProcess successfully attached to pid: {}", pid);
-        Ok(Self { pid })
+        log::trace!("New UserProcess successfully attached to pid: {}", pid);
+        let maps = get_process_maps(pid.as_raw())?;
+        assert!(!maps.is_empty());
+        let startptr = maps[0].start();
+        Ok(Self { pid,maps,startptr:startptr as u64 })
     }
 
     /// Getter for UserProcess actively connected pid
@@ -118,7 +124,7 @@ impl UserProcess {
             ptrs.push(mem.address());
         }
 
-        let (prefix, ints, suffix) = unsafe { ptrs.align_to() };
+        let (_prefix, ints, _suffix) = unsafe { ptrs.align_to() };
 
         self.put_bytes(ints)
     }
@@ -263,6 +269,22 @@ impl UserProcess {
         ptrace::setregs(self.pid, original_registers)?;
 
         Ok(result)
+    }
+
+    pub fn getregs(&self) -> HostResult<user_regs_struct> {
+        Ok(ptrace::getregs(self.pid)?)
+    }
+    pub fn setregs(&self, regs: user_regs_struct) -> HostResult<()> {
+        ptrace::setregs(self.pid, regs)?;
+        Ok(())
+    }
+    pub fn stop(&self) -> HostResult<()> {
+        ptrace::interrupt(self.pid)?;
+        Ok(())
+    }
+    pub fn resume(&self) -> HostResult<()> {
+        ptrace::cont(self.pid, Signal::SIGCONT)?;
+        Ok(())
     }
 
     pub fn insert_shellcode(&self, shellcode: &[u8]) -> HostResult<user_regs_struct> {

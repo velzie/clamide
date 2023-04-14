@@ -1,11 +1,9 @@
-void main() {
-  __asm__(
-
-      "mov rax, 4\n"
-      "mov rbx, 1\n"
-      "mov rcx, message\n"
-      "mov rdx, 13; size\n"
-      "int 0x80 \n"
-
-      "message: .ascii \"Hello World!\\n\";");
+#include <stdio.h>
+int main() {
+  printf("reachable code\n");
+  while (1) {
+  }
+}
+int unreachable() {
+  printf("congratulations! you have executed unreachable code\n");
 }
