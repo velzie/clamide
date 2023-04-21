@@ -4,6 +4,6 @@ int main() {
   while (1) {
   }
 }
-int unreachable() {
+void unreachable() {
   printf("congratulations! you have executed unreachable code\n");
 }

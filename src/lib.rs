@@ -1,4 +1,4 @@
-use std::vec;
+use std::{os::raw::c_void, vec};
 
 use nix::{
     libc::{user_regs_struct, MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE},
@@ -9,7 +9,7 @@ use nix::{
     },
     unistd::Pid,
 };
-use proc_maps::{MapRange, get_process_maps};
+use proc_maps::{get_process_maps, MapRange};
 use syscalls::Sysno;
 
 use thiserror::Error;
@@ -88,7 +88,11 @@ impl UserProcess {
         let maps = get_process_maps(pid.as_raw())?;
         assert!(!maps.is_empty());
         let startptr = maps[0].start();
-        Ok(Self { pid,maps,startptr:startptr as u64 })
+        Ok(Self {
+            pid,
+            maps,
+            startptr: startptr as u64,
+        })
     }
 
     /// Getter for UserProcess actively connected pid
@@ -197,13 +201,44 @@ impl UserProcess {
     /// Returns the amount of bytes written
     /// Reference: https://crates.io/crates/pete
     fn write_memory(&self, addr: u64, data: &[u8]) -> HostResult<usize> {
-        use std::os::unix::fs::FileExt;
-        let mem = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(self.proc_mem_path())?;
-        let len = mem.write_at(data, addr)?;
-        Ok(len)
+        
+        // use std::os::unix::fs::FileExt;
+        // let mem = std::fs::OpenOptions::new()
+        //     .read(true)
+        //     .write(true)
+        //     .open(self.proc_mem_path())?;
+        // let len = mem.write_at(data, addr)?;
+
+            let mut words = vec![];
+            for (i,chunk) in data.chunks(8).enumerate(){
+                if chunk.len() == 8{
+                    words.push(u64::from_ne_bytes(chunk.try_into().unwrap()));
+                }else{
+                    let natword = ptrace::read(self.pid,(addr + i as u64 * 8) as *mut c_void)?;
+
+                    let slc = [natword];
+                    let (_,bytes_r,_) = unsafe { slc.align_to::<u8>() };
+
+                    let mut bytebuf = bytes_r.to_vec();
+                    for j in 0..chunk.len() {
+                        bytebuf[j] = chunk[j];
+                    } 
+
+                    words.push(u64::from_ne_bytes(bytebuf.try_into().unwrap()));
+
+                }
+            }
+
+            for (i,word) in words.iter().enumerate(){
+                unsafe {
+                    ptrace::write(self.pid,(addr + i as u64 * 8) as *mut c_void, *word as *mut c_void)?;
+                    // yes we are multiplying pointer addresses here this is what things have come to
+                }
+            }
+
+        
+        Ok(data.len() * 8)
+        // Ok(len)
     }
 
     /// Common wrapper around reading memory
