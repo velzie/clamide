@@ -13,4 +13,8 @@ cd clamide
 cargo build --release
 sudo cp target/release/clamide /usr/bin/clamide
 ```
-See /examples to learn how to use the program
+See /examples to learn how to use the program.
+Note that this will only function on x86_64 bit computers running linux. This is partially because I'm lazy, but also because the authors of the ptrace library are lazy as well and never implemented it upstream.
+ 
+### Credits
+This whole project is based on [this amazing blog post](https://itnext.io/using-rust-and-ptrace-to-invoke-syscalls-262dc585fcd3). I would not have been able to do any of this or learn about this stuff without it.
