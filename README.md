@@ -7,9 +7,9 @@ The main focus of clamide is to let you execute syscalls from within the safe co
 ## How does it work?
 - First, it uses the ptrace syscall to attach to the target process. By default, the process is the shell that called clamide, but with -p you can use it on any process.
 - Then, the process is frozen temporarily and the RIP instruction pointer that corresponds to the next binary instruction the CPU will execute during the processes runtime is saved
-- PTRACE_POKETEXT is used to write the single byte 0x1B to the memory of the process, specifically at the instruction pointer that will be executed next. This byte corresponds to the syscall instruction for linux.
+- PTRACE_POKETEXT is used to write the two bytes `0x0f 0x05` to the memory of the process, specifically at the instruction pointer that will be executed next. These bytes corresponds to the syscall instruction for linux.
 - The registers of the target program are set to the arguments specified, and the process is stepped forward a single step, causing it to execute the syscall instruction we slipped in
-- The instruction pointer and the byte we changed are reset to the values they were before we changed them, the process is resumed and the control flow returns to normal
+- The instruction pointer and the bytes we changed are reset to the values they were before we changed them, the process is resumed and the control flow returns to normal
 
 It also contains a basic shellcode injector with `--shellcode`, although that isn't the main focus
 ### How do I use it?
