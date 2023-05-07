@@ -1,4 +1,4 @@
-;same program shellcode optimzed 
+
 section .text
 	global _start
 _start:
@@ -17,11 +17,8 @@ _start:
 	pop rsi		; pop "Hello World!" from stack
 	mov dl, 12	; set "Hello World!" size to 12
 	syscall
-	; xor rax, rax	; zero rax
-	; 
-	; mov al, 60	; set syscall to int sys_exit(int status)
-	; mov dil, 0	; set return value to 0, programm exited succesfully
-	; syscall
+
+	; set magic values to let clamide know that we're done executing shellcode and that the program can return to the default flow
    mov rax, 70
    mov rdi, 71
    mov rsi, 72

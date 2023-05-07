@@ -35,12 +35,13 @@ type HostResult<T> = Result<T, HostError>;
 
 fn main() -> HostResult<()> {
     pretty_env_logger::formatted_builder()
-        .filter_level(log::LevelFilter::Trace)
+        .filter_level(log::LevelFilter::Error)
         .init();
 
     let args: Vec<String> = env::args().collect();
 
     let mut opts = Options::new();
+    opts.optflag("h", "help", "print this help menu");
     opts.optopt("p", "process", "specify PID or the name of a proccess", "");
     opts.optopt("", "syscall", "specify syscall and arguments", "");
     opts.optopt("", "shellcode", "specify shellcode to inject", "");
@@ -64,12 +65,17 @@ fn main() -> HostResult<()> {
     );
     opts.optflag("", "stop", "pause proccess");
     opts.optflag("", "resume", "resume paused proccess");
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => {
             panic!("{}", f.to_string())
         }
     };
+    if matches.opt_present("h") {
+        print!("{}", opts.usage("Usage: clamide [options]"));
+        panic!();
+    }
 
     let pid = if let Some(pid_or_name) = matches.opt_str("p") {
         getpid(&pid_or_name).unwrap()
@@ -245,7 +251,6 @@ fn parse_int(proc: &UserProcess, inp: &str) -> Result<u64, Box<dyn Error>> {
         input.remove(0);
         input.remove(0);
     }
-    dbg!(&input);
     Ok(offset + u64::from_str_radix(&input, radix)?)
 }
 fn parse_byte(inp: &str) -> Result<u8, Box<dyn Error>> {
