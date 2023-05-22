@@ -20,6 +20,7 @@ use nix::{
     sys::ptrace,
     unistd::Pid,
 };
+use std::fs;
 use sysinfo::{PidExt, ProcessExt, System, SystemExt};
 use thiserror::Error;
 
@@ -45,6 +46,7 @@ fn main() -> HostResult<()> {
     opts.optopt("p", "process", "specify PID or the name of a proccess", "");
     opts.optopt("", "syscall", "specify syscall and arguments", "");
     opts.optopt("", "shellcode", "specify shellcode to inject", "");
+    opts.optopt("", "shellcodefile", "specify shellcode file to inject", "");
     opts.optopt(
         "",
         "alloc",
@@ -88,6 +90,9 @@ fn main() -> HostResult<()> {
         let shellcode = parse_shellcode(&input);
 
         proc.insert_shellcode(&shellcode).unwrap();
+    } else if let Some(input) = matches.opt_str("shellcodefile") {
+        let contents = fs::read(input).expect("could not read shellcode file");
+        proc.insert_shellcode(&contents).unwrap();
     } else if let Some(syscall_name) = matches.opt_str("syscall") {
         let syscall = syscalls::Sysno::from_str(&syscall_name).unwrap();
 
@@ -260,7 +265,7 @@ fn parse_byte(inp: &str) -> Result<u8, Box<dyn Error>> {
         radix = 16;
         input.remove(0);
     }
-    if input.chars().nth(1).unwrap() == 'x' {
+    if input.len() > 1 && input.chars().nth(1).unwrap() == 'x' {
         radix = 16;
         input.remove(0);
         input.remove(1);
